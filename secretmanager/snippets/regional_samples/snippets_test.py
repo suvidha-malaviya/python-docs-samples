@@ -28,6 +28,7 @@ from regional_samples import add_regional_secret_version
 from regional_samples import bind_tags_to_regional_secret
 from regional_samples import create_regional_secret
 from regional_samples import create_regional_secret_with_annotations
+from regional_samples import create_regional_secret_with_cloud_sql_credentials
 from regional_samples import create_regional_secret_with_delayed_destroy
 from regional_samples import create_regional_secret_with_labels
 from regional_samples import create_regional_secret_with_tags
@@ -440,6 +441,21 @@ def test_create_regional_secret_with_annotations(
         )
     )
     assert secret_id in secret.name
+
+
+def test_create_regional_secret_with_cloud_sql_credentials(
+    project_id: str,
+    location_id: str,
+    secret_id: str,
+) -> None:
+    secret = create_regional_secret_with_cloud_sql_credentials.create_regional_secret_with_cloud_sql_credentials(
+        project_id, location_id, secret_id
+    )
+    assert secret_id in secret.name
+    assert (
+        secret.secret_type
+        == secretmanager_v1.Secret.SecretType.CLOUD_SQL_DB_CREDENTIALS
+    )
 
 
 def test_create_regional_secret_with_delayed_destroy(
