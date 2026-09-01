@@ -86,7 +86,8 @@ if __name__ == "__main__":
     parser.add_argument("project_id", help="id of the GCP project")
     parser.add_argument("location_id", help="id of location where secret is stored")
     parser.add_argument(
-        "secret_id", help="id of the Cloud SQL DB credentials secret to rotate"
+        "secret_id",
+        help="id of the Cloud SQL DB credentials secret to enable rotation on",
     )
     parser.add_argument(
         "instance_id",

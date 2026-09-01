@@ -43,6 +43,7 @@ from regional_samples import disable_regional_secret_version
 from regional_samples import disable_regional_secret_version_with_etag
 from regional_samples import edit_regional_secret_annotations
 from regional_samples import edit_regional_secret_label
+from regional_samples import enable_regional_secret_managed_rotation
 from regional_samples import enable_regional_secret_version
 from regional_samples import enable_regional_secret_version_with_etag
 from regional_samples import get_regional_secret
@@ -54,6 +55,7 @@ from regional_samples import list_regional_secret_versions_with_filter
 from regional_samples import list_regional_secrets
 from regional_samples import list_regional_secrets_with_filter
 from regional_samples import regional_quickstart
+from regional_samples import rotate_regional_secret
 from regional_samples import update_regional_secret
 from regional_samples import update_regional_secret_with_delayed_destroy
 from regional_samples import update_regional_secret_with_etag
@@ -102,6 +104,16 @@ def project_id() -> str:
 @pytest.fixture()
 def iam_user() -> str:
     return "serviceAccount:" + os.environ["GCLOUD_SECRETS_SERVICE_ACCOUNT"]
+
+
+@pytest.fixture()
+def cloud_sql_instance_id() -> str:
+    return os.environ["CLOUD_SQL_INSTANCE"]
+
+
+@pytest.fixture()
+def cloud_sql_username() -> str:
+    return os.environ["CLOUD_SQL_USER"]
 
 
 @pytest.fixture()
@@ -356,6 +368,20 @@ def regional_secret_with_delayed_destroy(
     yield secret_id
 
 
+@pytest.fixture()
+def regional_secret_with_cloud_sql_credentials(
+    project_id: str,
+    location_id: str,
+    secret_id: str,
+) -> Iterator[str]:
+    print(f"creating cloud sql credentials secret {secret_id}")
+    create_regional_secret_with_cloud_sql_credentials.create_regional_secret_with_cloud_sql_credentials(
+        project_id, location_id, secret_id
+    )
+
+    yield secret_id
+
+
 def test_regional_quickstart(project_id: str, location_id: str, secret_id: str) -> None:
     regional_quickstart.regional_quickstart(project_id, location_id, secret_id)
 
@@ -456,6 +482,40 @@ def test_create_regional_secret_with_cloud_sql_credentials(
         secret.secret_type
         == secretmanager_v1.Secret.SecretType.CLOUD_SQL_DB_CREDENTIALS
     )
+
+
+def test_enable_regional_secret_managed_rotation(
+    regional_secret_with_cloud_sql_credentials: str,
+    project_id: str,
+    location_id: str,
+    cloud_sql_instance_id: str,
+    cloud_sql_username: str,
+) -> None:
+    secret_id = regional_secret_with_cloud_sql_credentials
+    version = enable_regional_secret_managed_rotation.enable_regional_secret_managed_rotation(
+        project_id, location_id, secret_id, cloud_sql_instance_id, cloud_sql_username
+    )
+    assert secret_id in version.name
+    assert version.state == secretmanager_v1.SecretVersion.State.ENABLED
+
+
+def test_rotate_regional_secret(
+    regional_secret_with_cloud_sql_credentials: str,
+    project_id: str,
+    location_id: str,
+    cloud_sql_instance_id: str,
+    cloud_sql_username: str,
+) -> None:
+    secret_id = regional_secret_with_cloud_sql_credentials
+    first_version = enable_regional_secret_managed_rotation.enable_regional_secret_managed_rotation(
+        project_id, location_id, secret_id, cloud_sql_instance_id, cloud_sql_username
+    )
+    rotated_version = rotate_regional_secret.rotate_regional_secret(
+        project_id, location_id, secret_id
+    )
+    assert secret_id in rotated_version.name
+    assert rotated_version.name != first_version.name
+    assert rotated_version.state == secretmanager_v1.SecretVersion.State.ENABLED
 
 
 def test_create_regional_secret_with_delayed_destroy(
